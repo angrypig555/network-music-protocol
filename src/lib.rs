@@ -1,16 +1,22 @@
 use log_overflow::{log, log_init, Severity};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::time::{sleep, Duration};
 
 const MAGIC: u8 = 0x67;
+
+struct metadata {
+    name: String,
+    length: String,
+    artist: String,
+}
 
 //#[derive(Serialize, Deserialize, Debug)]
 struct packet {
     header: u8,
+    metadata: metadata,
     chunk: u32,
     size: u32,
-    data: String, //temporary placeholder
+    data: Vec<u8>, //temporary placeholder
 }
 
 async fn process(mut socket: TcpStream) {
@@ -27,6 +33,21 @@ async fn process(mut socket: TcpStream) {
                     return
                 }
                 log(Severity::DEBUG, "magic byte correct");
+                let first_metadata = metadata {
+                    name: String::from("Foo is bar"),
+                    length: String::from("1:23"),
+                    artist: String::from("foobar"),
+                };
+                let first_packet = packet {
+                    header: 0x67,
+                    metadata: first_metadata,
+                    chunk: 1,
+                    size: 1234,
+                    data: vec![0, 1, 2, 3, 4],
+                };
+                let encoded: Vec<u8> = bincode::serialize(&first_packet).unwrap();
+                socket.write_all(&encoded).await.unwrap();
+                log(Severity::DEBUG, "sent first packet");
                 return
             }
             Err(e   ) => {
